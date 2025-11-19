@@ -1,8 +1,8 @@
-import shoe1Url from '@/shoe1.glb?url';
-import shoe2Url from '@/shoe2.glb?url';
-import shoe3Url from '@/shoe3.glb?url';
-import shoe4Url from '@/shoe4.glb?url';
-import shoe5Url from '@/shoe5.glb?url';
+import shoe1Url from '@/shoe1-compressed.glb?url';
+import shoe2Url from '@/shoe2-compressed.glb?url';
+import shoe3Url from '@/shoe3-compressed.glb?url';
+import shoe4Url from '@/shoe4-compressed.glb?url';
+import shoe5Url from '@/shoe5-compressed.glb?url';
 
 export type ShoeModel = {
   id: string;
