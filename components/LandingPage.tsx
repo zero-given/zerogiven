@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -11,6 +11,7 @@ import LoadingIndicator from './LoadingIndicator';
 const LandingPage: React.FC = () => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [modelIndex, setModelIndex] = useState(0);
+  const [autoCycleEnabled, setAutoCycleEnabled] = useState(true);
   const totalModels = shoeModels.length;
   const currentModel = shoeModels[modelIndex % totalModels];
 
@@ -26,6 +27,22 @@ const LandingPage: React.FC = () => {
 
   const handleNextModel = () => {
     setModelIndex((prev) => (prev + 1) % totalModels);
+  };
+
+  useEffect(() => {
+    if (!autoCycleEnabled) return;
+
+    const timeout = window.setTimeout(() => {
+      setModelIndex((prev) => (prev + 1) % totalModels);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [autoCycleEnabled, modelIndex, totalModels]);
+
+  const handleAutoCycleToggle = () => {
+    setAutoCycleEnabled((prev) => !prev);
   };
 
   return (
@@ -45,9 +62,6 @@ const LandingPage: React.FC = () => {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="pointer-events-none text-xs font-mono tracking-widest text-white/70 uppercase">
-          {currentModel.label}
-        </div>
         <button
           type="button"
           onClick={handleNextModel}
@@ -78,7 +92,31 @@ const LandingPage: React.FC = () => {
                    <div className="hidden md:block w-px h-4 bg-zinc-300 dark:bg-zinc-700"></div>
                    <div className="text-xs text-zinc-500 dark:text-zinc-500">STATUS: PENDING</div>
                 </div>
-                <ThemeToggle />
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={handleAutoCycleToggle}
+                    aria-pressed={autoCycleEnabled}
+                    aria-label="Toggle automatic shoe cycling"
+                    className={`relative inline-flex items-center h-6 w-14 rounded-full border border-zinc-300 dark:border-zinc-700 px-1 transition-colors ${
+                      autoCycleEnabled ? 'bg-emerald-500/80 text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                    }`}
+                  >
+                    <span
+                      className={`text-[10px] font-semibold tracking-widest w-full text-center transition-opacity ${
+                        autoCycleEnabled ? 'opacity-100' : 'opacity-70'
+                      }`}
+                    >
+                      AUTO
+                    </span>
+                    <span
+                      className={`absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-white dark:bg-zinc-200 shadow transition-transform ${
+                        autoCycleEnabled ? 'translate-x-6' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  <ThemeToggle />
+                </div>
             </div>
 
             {/* Hero Section */}
