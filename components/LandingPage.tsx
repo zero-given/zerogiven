@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react';
 import Background3D from './Background3D';
 import ThemeToggle from './ThemeToggle';
 import shoeModels from '@/models';
+import LoadingIndicator from './LoadingIndicator';
 
 const LandingPage: React.FC = () => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
@@ -29,6 +30,7 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="relative min-h-screen w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black transition-colors duration-500 overflow-hidden">
+      <LoadingIndicator />
       
       {/* 3D Background Layer */}
       <Background3D modelUrl={currentModel.url} />

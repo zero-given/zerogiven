@@ -87,4 +87,29 @@ const Background3D: React.FC<Background3DProps> = ({ modelUrl }) => {
 
 export default Background3D;
 
-shoeModels.forEach(({ url }) => useGLTF.preload(url));
+const priorityModelUrl = shoeModels[0]?.url;
+if (priorityModelUrl) {
+  // Warm the cache for the hero shoe so it is always available immediately.
+  useGLTF.preload(priorityModelUrl);
+}
+
+const remainingModelUrls = shoeModels.slice(1).map(({ url }) => url);
+let lazyPreloadQueued = false;
+
+export const startLazyShoePreload = () => {
+  if (lazyPreloadQueued || remainingModelUrls.length === 0) return;
+  lazyPreloadQueued = true;
+
+  const loadRemaining = () => {
+    remainingModelUrls.forEach((url, index) => {
+      // Stagger requests slightly to avoid fighting with the initial hero load.
+      setTimeout(() => useGLTF.preload(url), index * 200);
+    });
+  };
+
+  if (typeof window !== 'undefined') {
+    window.setTimeout(loadRemaining, 400);
+  } else {
+    loadRemaining();
+  }
+};
