@@ -1,19 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useProgress } from '@react-three/drei';
-import { startLazyShoePreload } from './Background3D';
 
 const LoadingIndicator: React.FC = () => {
   const { active, progress } = useProgress();
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progress)));
-  const lazyLoadTriggered = useRef(false);
-
-  useEffect(() => {
-    if (!lazyLoadTriggered.current && roundedProgress >= 100 && !active) {
-      startLazyShoePreload();
-      lazyLoadTriggered.current = true;
-    }
-  }, [roundedProgress, active]);
 
   return (
     <AnimatePresence>

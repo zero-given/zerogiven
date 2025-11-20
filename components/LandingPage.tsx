@@ -3,15 +3,28 @@ import { motion } from 'framer-motion';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { ArrowLeft, ArrowRight, ArrowUpRight } from 'lucide-react';
-import Background3D from './Background3D';
+import Background3D, { RenderPresetId, renderPresets, renderPresetOrder } from './Background3D';
 import ThemeToggle from './ThemeToggle';
 import shoeModels from '@/models';
 import LoadingIndicator from './LoadingIndicator';
+import ControlPanel from './ControlPanel';
 
 const LandingPage: React.FC = () => {
+  const headingFonts = [
+    { id: 'be-vietnam-pro', label: 'Be Vietnam Pro', stack: '"Be Vietnam Pro", Inter, sans-serif' },
+    { id: 'switzer', label: 'Switzer', stack: '"Switzer", Inter, sans-serif' },
+    { id: 'rethink-sans', label: 'Rethink Sans', stack: '"Rethink Sans", Inter, sans-serif' },
+    { id: 'space-grotesk', label: 'Space Grotesk', stack: '"Space Grotesk", Inter, sans-serif' },
+    { id: 'manrope', label: 'Manrope', stack: '"Manrope", Inter, sans-serif' },
+    { id: 'archivo', label: 'Archivo', stack: '"Archivo", Inter, sans-serif' },
+  ];
   const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [modelIndex, setModelIndex] = useState(0);
   const [autoCycleEnabled, setAutoCycleEnabled] = useState(true);
+  const [renderPresetId, setRenderPresetId] = useState<RenderPresetId>('high');
+  const [autoCycleInterval, setAutoCycleInterval] = useState(5000);
+  const [transitionDuration, setTransitionDuration] = useState(0.7);
+  const [headingFontIndex, setHeadingFontIndex] = useState(0);
   const totalModels = shoeModels.length;
   const currentModel = shoeModels[modelIndex % totalModels];
 
@@ -29,28 +42,54 @@ const LandingPage: React.FC = () => {
     setModelIndex((prev) => (prev + 1) % totalModels);
   };
 
+  const handleRenderPresetChange = (presetId: RenderPresetId) => {
+    setRenderPresetId(presetId);
+  };
+
+  const handleAutoCycleIntervalChange = (ms: number) => {
+    setAutoCycleInterval(Math.max(1000, ms));
+  };
+
+  const handleTransitionDurationChange = (duration: number) => {
+    setTransitionDuration(Math.max(0.1, duration));
+  };
+
   useEffect(() => {
     if (!autoCycleEnabled) return;
 
     const timeout = window.setTimeout(() => {
       setModelIndex((prev) => (prev + 1) % totalModels);
-    }, 3000);
+    }, autoCycleInterval);
 
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [autoCycleEnabled, modelIndex, totalModels]);
+  }, [autoCycleEnabled, autoCycleInterval, modelIndex, totalModels]);
 
   const handleAutoCycleToggle = () => {
     setAutoCycleEnabled((prev) => !prev);
   };
 
+  const handleHeadingFontToggle = () => {
+    setHeadingFontIndex((prev) => (prev + 1) % headingFonts.length);
+  };
+
   return (
     <div className="relative min-h-screen w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black transition-colors duration-500 overflow-hidden">
       <LoadingIndicator />
+      <ControlPanel
+        renderPresetId={renderPresetId}
+        onRenderPresetChange={handleRenderPresetChange}
+        autoCycleEnabled={autoCycleEnabled}
+        onToggleAutoCycle={handleAutoCycleToggle}
+        autoCycleInterval={autoCycleInterval}
+        onAutoCycleIntervalChange={handleAutoCycleIntervalChange}
+        transitionDuration={transitionDuration}
+        onTransitionDurationChange={handleTransitionDurationChange}
+      />
       
-      {/* 3D Background Layer */}
-      <Background3D modelUrl={currentModel.url} />
+      {/* 3D Background Layer (keep canvas alive between model swaps) */}
+      <Background3D modelUrl={currentModel.url} presetId={renderPresetId} />
 
       {/* Model switcher arrows */}
       <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20 flex items-center justify-between px-4 sm:px-8">
@@ -92,7 +131,31 @@ const LandingPage: React.FC = () => {
                    <div className="hidden md:block w-px h-4 bg-zinc-300 dark:bg-zinc-700"></div>
                    <div className="text-xs text-zinc-500 dark:text-zinc-500">STATUS: PENDING</div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap justify-end">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.3em] uppercase text-zinc-500 dark:text-zinc-400">
+                    <span>Render</span>
+                    <div className="relative h-8 w-40 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100/40 dark:bg-white/5 px-1">
+                      <motion.div
+                        className="absolute top-1 bottom-1 rounded-full bg-white text-black shadow pointer-events-none dark:bg-white/90"
+                        style={{ width: `${100 / renderPresetOrder.length}%` }}
+                        animate={{ left: `${renderPresetOrder.indexOf(renderPresetId) * (100 / renderPresetOrder.length)}%` }}
+                        transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                      />
+                      <div className="relative grid grid-cols-3 h-full text-[10px] font-semibold">
+                        {renderPresetOrder.map((optionId) => (
+                          <button
+                            key={optionId}
+                            type="button"
+                            onClick={() => handleRenderPresetChange(optionId)}
+                            className={`uppercase tracking-[0.2em] text-center transition-colors ${renderPresetId === optionId ? 'text-zinc-900 dark:text-black' : 'text-zinc-500 dark:text-zinc-400'}`}
+                            aria-pressed={renderPresetId === optionId}
+                          >
+                            {renderPresets[optionId].shortLabel}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={handleAutoCycleToggle}
@@ -106,14 +169,25 @@ const LandingPage: React.FC = () => {
                       className={`text-[10px] font-semibold tracking-widest w-full text-center transition-opacity ${
                         autoCycleEnabled ? 'opacity-100' : 'opacity-70'
                       }`}
-                    >
+                  >
                       AUTO
+                  </span>
+                  <span
+                    className={`absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-white dark:bg-zinc-200 shadow transition-transform ${
+                      autoCycleEnabled ? 'translate-x-6' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+                  <button
+                    type="button"
+                    onClick={handleHeadingFontToggle}
+                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/60 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-zinc-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 transition-colors"
+                    aria-label="Toggle heading font"
+                  >
+                    Font
+                    <span className="inline-block rounded-full bg-zinc-900 text-white dark:bg-white dark:text-black px-2 py-0.5 text-[10px] font-bold tracking-[0.2em]">
+                      {headingFonts[headingFontIndex].label}
                     </span>
-                    <span
-                      className={`absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-white dark:bg-zinc-200 shadow transition-transform ${
-                        autoCycleEnabled ? 'translate-x-6' : 'translate-x-0'
-                      }`}
-                    />
                   </button>
                   <ThemeToggle />
                 </div>
@@ -130,19 +204,18 @@ const LandingPage: React.FC = () => {
                    animate={{ y: 0, opacity: 1 }}
                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                    className="text-[15vw] leading-[0.8] font-bold tracking-tighter uppercase relative z-10 mix-blend-hard-light dark:mix-blend-difference"
+                   style={{ fontFamily: headingFonts[headingFontIndex].stack }}
                 >
-                    Zero
+                    ZERO
                     <br/>
-                    Given
+                    GIVEN
                 </motion.h1>
                 
                 <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-12 border-t border-zinc-200 dark:border-zinc-900 pt-12 relative z-10 transition-colors duration-500">
                     <div className="space-y-4">
                         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-600">Mission</h3>
                         <p className="text-xl md:text-2xl font-light leading-tight max-w-md text-zinc-700 dark:text-zinc-300">
-                            We are restructuring the digital void.
-                            <br/>
-                            Silence is the new luxury.
+                            3D native FTWR design.
                         </p>
                     </div>
 
