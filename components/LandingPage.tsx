@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
+import { useGLTF } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -18,13 +19,17 @@ const LandingPage: React.FC = () => {
     { id: 'archivo', label: 'Archivo', stack: '"Archivo", Inter, sans-serif' },
   ];
   const [headingFontIndex] = useState(0); // UI hidden; keep state for quick re-enable later.
+  const loadedModelsRef = useRef<Set<string>>(new Set());
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [modelIndex, setModelIndex] = useState(0);
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const autoCycleEnabled = true; // Locked on; toggle removed for cleaner mobile layout.
   const renderPresetId: RenderPresetId = 'high'; // Locked to high; controls hidden.
   const autoCycleInterval = 5000;
   const totalModels = shoeModels.length;
   const currentModel = shoeModels[modelIndex % totalModels];
+  const gltfPreload = useGLTF.preload;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,32 +37,93 @@ const LandingPage: React.FC = () => {
     setTimeout(() => setStatus('success'), 1500);
   };
 
+  const requestModelIndex = (nextIndex: number) => {
+    const nextUrl = shoeModels[nextIndex].url;
+    if (loadedModelsRef.current.has(nextUrl)) {
+      setModelIndex(nextIndex);
+      setPendingIndex(null);
+      return;
+    }
+    setPendingIndex(nextIndex);
+    if (gltfPreload) {
+      gltfPreload(nextUrl);
+    }
+  };
+
   const handlePrevModel = () => {
-    setModelIndex((prev) => (prev - 1 + totalModels) % totalModels);
+    requestModelIndex((modelIndex - 1 + totalModels) % totalModels);
   };
 
   const handleNextModel = () => {
-    setModelIndex((prev) => (prev + 1) % totalModels);
+    requestModelIndex((modelIndex + 1) % totalModels);
+  };
+
+  const handleModelLoaded = (url: string) => {
+    if (loadedModelsRef.current.has(url)) return;
+    loadedModelsRef.current.add(url);
+    if (!initialLoadComplete) {
+      setInitialLoadComplete(true);
+    }
   };
 
   useEffect(() => {
-    if (!autoCycleEnabled) return;
+    if (pendingIndex === null) return;
+
+    let retryTimeout: number | undefined;
+
+    const checkReady = () => {
+      if (pendingIndex === null) return;
+      const targetUrl = shoeModels[pendingIndex].url;
+      if (loadedModelsRef.current.has(targetUrl)) {
+        setModelIndex(pendingIndex);
+        setPendingIndex(null);
+        return;
+      }
+      if (gltfPreload) {
+        gltfPreload(targetUrl);
+      }
+      retryTimeout = window.setTimeout(checkReady, 200);
+    };
+
+    checkReady();
+
+    return () => {
+      if (retryTimeout) window.clearTimeout(retryTimeout);
+    };
+  }, [pendingIndex, gltfPreload, totalModels]);
+
+  useEffect(() => {
+    if (!autoCycleEnabled || pendingIndex !== null) return;
 
     const timeout = window.setTimeout(() => {
-      setModelIndex((prev) => (prev + 1) % totalModels);
+      const nextIndex = (modelIndex + 1) % totalModels;
+      requestModelIndex(nextIndex);
     }, autoCycleInterval);
 
     return () => {
-      window.clearTimeout(timeout);
+      if (timeout) window.clearTimeout(timeout);
     };
-  }, [autoCycleEnabled, autoCycleInterval, modelIndex, totalModels]);
+  }, [autoCycleEnabled, autoCycleInterval, modelIndex, pendingIndex, totalModels, gltfPreload]);
+
+  const PreloadModel: React.FC<{ url: string; onLoaded: (url: string) => void }> = ({ url, onLoaded }) => {
+    useGLTF(url);
+    useEffect(() => {
+      onLoaded(url);
+    }, [url, onLoaded]);
+    return null;
+  };
 
   return (
     <div className="relative min-h-screen w-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black transition-colors duration-500 overflow-hidden">
-      <LoadingIndicator />
+      <LoadingIndicator hideAfterInitial initialLoadComplete={initialLoadComplete} />
       
       {/* 3D Background Layer (keep canvas alive between model swaps) */}
-      <Background3D modelUrl={currentModel.url} presetId={renderPresetId} />
+      <Background3D modelUrl={currentModel.url} presetId={renderPresetId} onModelLoaded={handleModelLoaded} />
+      <Suspense fallback={null}>
+        {pendingIndex !== null && (
+          <PreloadModel url={shoeModels[pendingIndex].url} onLoaded={handleModelLoaded} />
+        )}
+      </Suspense>
 
       {/* Model switcher arrows */}
       <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20 flex items-center justify-between px-4 sm:px-8">

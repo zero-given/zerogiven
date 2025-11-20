@@ -2,9 +2,18 @@ import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useProgress } from '@react-three/drei';
 
-const LoadingIndicator: React.FC = () => {
+interface LoadingIndicatorProps {
+  hideAfterInitial?: boolean;
+  initialLoadComplete?: boolean;
+}
+
+const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ hideAfterInitial = false, initialLoadComplete = false }) => {
   const { active, progress } = useProgress();
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progress)));
+
+  if (hideAfterInitial && initialLoadComplete) {
+    return null;
+  }
 
   return (
     <AnimatePresence>

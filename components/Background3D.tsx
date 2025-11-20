@@ -75,11 +75,15 @@ export const renderPresetOrder: RenderPresetId[] = ['low', 'balanced', 'high'];
 interface Background3DProps {
   modelUrl: string;
   presetId: RenderPresetId;
+  onModelLoaded?: (url: string) => void;
 }
 
-const RotatingModel: React.FC<{ modelUrl: string; preset: RenderPreset }> = ({ modelUrl, preset }) => {
+const RotatingModel: React.FC<{ modelUrl: string; preset: RenderPreset; onModelLoaded?: (url: string) => void }> = ({ modelUrl, preset, onModelLoaded }) => {
   const modelRef = useRef<THREE.Object3D>(null);
   const { scene } = useGLTF(modelUrl);
+  React.useEffect(() => {
+    onModelLoaded?.(modelUrl);
+  }, [modelUrl, onModelLoaded]);
   const { model, autoScale } = useMemo(() => {
     const clonedScene = scene.clone(true);
     const normalizedGroup = new THREE.Group();
@@ -141,7 +145,7 @@ const RotatingModel: React.FC<{ modelUrl: string; preset: RenderPreset }> = ({ m
   );
 };
 
-const Background3D: React.FC<Background3DProps> = ({ modelUrl, presetId }) => {
+const Background3D: React.FC<Background3DProps> = ({ modelUrl, presetId, onModelLoaded }) => {
   const preset = renderPresets[presetId];
 
   return (
@@ -151,7 +155,7 @@ const Background3D: React.FC<Background3DProps> = ({ modelUrl, presetId }) => {
           {preset.environmentPreset && <Environment preset={preset.environmentPreset} />}
           <directionalLight position={[5, 5, 5]} intensity={preset.directionalLight} />
           <ambientLight intensity={preset.ambientLight} />
-          <RotatingModel modelUrl={modelUrl} preset={preset} />
+          <RotatingModel modelUrl={modelUrl} preset={preset} onModelLoaded={onModelLoaded} />
         </Suspense>
       </Canvas>
     </div>
